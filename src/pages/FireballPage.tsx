@@ -20,20 +20,24 @@ import {
 // stop with alpha 0 so the dragging variant can interpolate it cleanly
 // to a real glow without changing the stop count (CSS box-shadow only
 // transitions smoothly between shadows with the same number of stops).
+// Glow color is a softened warm tone (255,170,90) — not pure orange —
+// matching the cool background palette.
 const KNOB_BASE_SHADOW =
-  'shadow-[0px_1px_4px_0px_rgba(0,0,0,0.25),0px_2px_8px_-2px_rgba(0,0,0,0.2),0px_6px_12px_-6px_rgba(0,0,0,0.25),0px_8px_16px_-8px_rgba(0,0,0,0.1),0px_0px_0px_0px_rgba(255,150,60,0)]'
+  'shadow-[0px_1px_4px_0px_rgba(0,0,0,0.35),0px_2px_8px_-2px_rgba(0,0,0,0.3),0px_6px_12px_-6px_rgba(0,0,0,0.35),0px_8px_16px_-8px_rgba(0,0,0,0.15),0px_0px_0px_0px_rgba(255,170,90,0)]'
 
-// Same 5-stop shape, but the 5th stop blooms into a warm fire glow.
+// Same 5-stop shape, but the 5th stop blooms into a soft warm glow.
 const KNOB_DRAGGING_SHADOW =
-  'group-data-[dragging=true]:shadow-[0px_1px_4px_0px_rgba(0,0,0,0.25),0px_2px_8px_-2px_rgba(0,0,0,0.2),0px_6px_12px_-6px_rgba(0,0,0,0.25),0px_8px_16px_-8px_rgba(0,0,0,0.1),0px_0px_24px_0px_rgba(255,150,60,0.65)]'
+  'group-data-[dragging=true]:shadow-[0px_1px_4px_0px_rgba(0,0,0,0.35),0px_2px_8px_-2px_rgba(0,0,0,0.3),0px_6px_12px_-6px_rgba(0,0,0,0.35),0px_8px_16px_-8px_rgba(0,0,0,0.15),0px_0px_28px_0px_rgba(255,170,90,0.45)]'
 
 const PILL_INNER_SHADOW =
   'shadow-[inset_0px_0.5px_0.5px_0px_rgba(255,255,255,0.25),inset_0px_-0.5px_0.5px_0px_rgba(0,0,0,0.25),inset_0px_0px_0px_0.5px_rgba(0,0,0,0.1)]'
 
-const TRACK_HAIRLINE = 'shadow-[inset_0px_0px_0px_0.5px_rgba(0,0,0,0.1)]'
+// Cool light hairline border — visible on the dark background.
+const TRACK_HAIRLINE = 'shadow-[inset_0px_0px_0px_0.5px_rgba(220,228,240,0.15)]'
 
+// Badge: soft warm halo + cool dark drop shadow.
 const BADGE_SHADOW =
-  'shadow-[0px_0px_18px_0px_rgba(255,140,40,0.55),0px_4px_12px_0px_rgba(0,0,0,0.4)]'
+  'shadow-[0px_0px_18px_0px_rgba(255,170,90,0.45),0px_4px_12px_0px_rgba(0,0,0,0.5)]'
 
 export function FireballPage() {
   // Two independent input systems, both created once on mount.
@@ -227,7 +231,7 @@ export function FireballPage() {
 
   return (
     <main
-      className="relative min-h-dvh w-full cursor-crosshair touch-none select-none overflow-hidden bg-white font-sans"
+      className="relative min-h-dvh w-full cursor-crosshair touch-none select-none overflow-hidden bg-[#2B3445] font-sans"
       onPointerMove={handleViewportPointerMove}
     >
       {/* Full-viewport Three.js canvas — fireball renders here */}
@@ -264,7 +268,7 @@ export function FireballPage() {
               onPointerMove={handleSliderPointerMove}
               onPointerUp={handleSliderPointerUp}
               onPointerCancel={handleSliderPointerUp}
-              className={`group pointer-events-auto relative h-[32px] w-full cursor-grab touch-none rounded-[999px] bg-black/50 active:cursor-grabbing ${TRACK_HAIRLINE}`}
+              className={`group pointer-events-auto relative h-[32px] w-full cursor-grab touch-none rounded-[999px] bg-white/15 active:cursor-grabbing ${TRACK_HAIRLINE}`}
             >
               {/*
                 Track radial highlight — follows the knob via the --glow-x
@@ -277,7 +281,7 @@ export function FireballPage() {
                 className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 transition-opacity duration-200 ease-out group-data-[dragging=true]:opacity-100"
                 style={{
                   background:
-                    'radial-gradient(ellipse 64px 18px at var(--glow-x, 20px) center, rgba(255,150,60,0.55), transparent 70%)',
+                    'radial-gradient(ellipse 72px 20px at var(--glow-x, 20px) center, rgba(255,170,90,0.42), transparent 72%)',
                 }}
               />
 
@@ -306,7 +310,7 @@ export function FireballPage() {
                   className="pointer-events-none absolute -top-[28px] left-1/2 -translate-x-1/2 translate-y-2 opacity-0 transition-[opacity,transform] duration-200 ease-out group-data-[dragging=true]:translate-y-0 group-data-[dragging=true]:opacity-100"
                 >
                   <div
-                    className={`min-w-[32px] rounded-md bg-black/90 px-[8px] py-[3px] text-center text-[11px] font-medium leading-none tabular-nums text-white ${BADGE_SHADOW}`}
+                    className={`min-w-[32px] rounded-md bg-[#1a2230]/95 px-[8px] py-[3px] text-center text-[11px] font-medium leading-none tabular-nums text-[#e3e8ef] ${BADGE_SHADOW}`}
                   >
                     <span ref={badgeTextRef}>0</span>
                   </div>
@@ -324,7 +328,7 @@ export function FireballPage() {
                 */}
                 <div
                   ref={knobScalerRef}
-                  className={`relative h-full w-full rounded-[999px] bg-white transition-[transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[dragging=true]:scale-110 ${KNOB_BASE_SHADOW} ${KNOB_DRAGGING_SHADOW}`}
+                  className={`relative h-full w-full rounded-[999px] bg-[#e8ecf2] transition-[transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[dragging=true]:scale-110 ${KNOB_BASE_SHADOW} ${KNOB_DRAGGING_SHADOW}`}
                   style={{ willChange: 'transform, box-shadow' }}
                 >
                   {/* 3x3 grid of 4px gray dots (1812:67) */}
@@ -354,8 +358,8 @@ export function FireballPage() {
             </div>
           </div>
 
-          {/* Labels row — 208 wide, "0" / "100", Inter Medium 10 black (1812:76) */}
-          <div className="flex w-[208px] items-center justify-between font-medium text-[10px] leading-none capitalize text-black">
+          {/* Labels row — 208 wide, "0" / "100", Inter Medium 10 cool gray (1812:76) */}
+          <div className="flex w-[208px] items-center justify-between font-medium text-[10px] leading-none capitalize text-[#a8b1bf]">
             <span>0</span>
             <span>100</span>
           </div>

@@ -203,14 +203,17 @@ export class Fireball {
           float core = smoothstep(0.5, 0.0, d);
           float glow = pow(core, 1.6);
 
-          // Color ramp: white-hot → yellow → orange → red
-          vec3 white  = vec3(1.00, 1.00, 0.92);
-          vec3 yellow = vec3(1.00, 0.84, 0.28);
-          vec3 orange = vec3(1.00, 0.46, 0.10);
-          vec3 red    = vec3(0.85, 0.13, 0.05);
+          // Color ramp — recalibrated for the cool #2B3445 background:
+          //   - Core: warm cream (not pure white)
+          //   - Mid:  slightly desaturated golden / orange
+          //   - Outer: darker rust red
+          vec3 cream  = vec3(1.00, 0.94, 0.74);
+          vec3 yellow = vec3(1.00, 0.78, 0.36);
+          vec3 orange = vec3(0.92, 0.48, 0.16);
+          vec3 red    = vec3(0.62, 0.20, 0.10);
           vec3 color;
           if (vAge < 0.20) {
-            color = mix(white, yellow, vAge / 0.20);
+            color = mix(cream, yellow, vAge / 0.20);
           } else if (vAge < 0.50) {
             color = mix(yellow, orange, (vAge - 0.20) / 0.30);
           } else if (vAge < 0.85) {
@@ -219,11 +222,19 @@ export class Fireball {
             color = red;
           }
 
-          // Brighten the very young particles for a white-hot core feel
-          color += (1.0 - smoothstep(0.0, 0.15, vAge)) * vec3(0.20);
+          // Subtle warm boost on the very young (white-hot core feel) —
+          // smaller and warm-tinted so it doesn't pop against the cool bg.
+          color += (1.0 - smoothstep(0.0, 0.15, vAge)) * vec3(0.12, 0.10, 0.04);
 
-          // Alpha: smooth fade-in / fade-out across life,
-          // scaled by intensity (soft glow at 0 → vivid at 100).
+          // Ambient blend — old particles fade their hue toward the
+          // background color so the outer edges of the fireball dissolve
+          // into the scene instead of hard-edged.
+          vec3 ambient = vec3(0.169, 0.204, 0.271); // #2B3445
+          color = mix(color, ambient, smoothstep(0.55, 1.0, vAge) * 0.35);
+
+          // Alpha: smooth fade-in / fade-out across life, capped lower
+          // than before (max 0.80 instead of 1.00) so the glow stays
+          // restrained against the dark background.
           float alphaIn  = smoothstep(0.00, 0.05, vAge);
           float alphaOut = 1.0 - smoothstep(0.65, 1.00, vAge);
           float intensityAlpha = ${SHADER_ALPHA_BASE.toFixed(2)} + ${SHADER_ALPHA_GAIN.toFixed(2)} * uIntensity;

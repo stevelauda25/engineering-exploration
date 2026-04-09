@@ -72,9 +72,11 @@ export const SPAWN_SCATTER_GAIN = 22
 export const SPAWN_RADIAL_SPREAD_BASE = 10
 export const SPAWN_RADIAL_SPREAD_GAIN = 120
 
-// Shader alpha multiplier — soft glow at 0, vivid at 100
-export const SHADER_ALPHA_BASE = 0.3
-export const SHADER_ALPHA_GAIN = 0.7
+// Shader alpha multiplier — soft glow at 0, restrained at 100.
+// Capped lower than 1.0 so the fire stays atmospheric on the cool dark
+// background instead of feeling neon / detached.
+export const SHADER_ALPHA_BASE = 0.25
+export const SHADER_ALPHA_GAIN = 0.55
 
 // ============================================================
 // Cursor follow
