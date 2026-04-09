@@ -21,4 +21,14 @@ export const experiments: Experiment[] = [
     status: 'live',
     path: '/experiments/particle-sphere',
   },
+  {
+    id: 'fireball',
+    index: '02',
+    title: 'Interactive Fireball',
+    description:
+      'A living particle fireball that follows the cursor — bursts on flicks, intensifies on hover, pulses on click, and trails a fading wake of embers.',
+    tag: 'WebGL · Particles',
+    status: 'live',
+    path: '/experiment/fireball',
+  },
 ]
