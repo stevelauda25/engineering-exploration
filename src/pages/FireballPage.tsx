@@ -55,8 +55,6 @@ export function FireballPage() {
 
   // ============================================================
   // Mount Three.js fireball + run the slider tick loop.
-  // The fireball owns its own rAF for rendering; we run a parallel
-  // rAF for the slider so its smoothing and inertia are independent.
   // ============================================================
   useEffect(() => {
     const container = canvasContainerRef.current
@@ -66,7 +64,6 @@ export function FireballPage() {
     fireballRef.current = fireball
 
     // Initial state — sync the fireball + DOM to the slider's starting value.
-    // The slider was initialized to INITIAL_INTENSITY in its constructor.
     fireball.setIntensityTarget(INITIAL_INTENSITY)
 
     if (knobMoverRef.current) {
@@ -108,8 +105,7 @@ export function FireballPage() {
         trackGlow.style.setProperty('--glow-x', `${knobCenter}px`)
       }
 
-      // Update the value badge text (Math.round so the displayed integer
-      // changes once per perceived unit, no flicker)
+      // Update the value badge text
       const badgeText = badgeTextRef.current
       if (badgeText) badgeText.textContent = String(Math.round(slider.value))
 
@@ -118,15 +114,11 @@ export function FireballPage() {
       // this, giving the fire a "physical" delayed response.
       fireball.setIntensityTarget(slider.value)
 
-      // Pulse on quick increase only (positive velocity). Decreases use
-      // smooth lerp without a pulse.
+      // Pulse on quick increase only (positive velocity).
       pulseCooldown -= dt
       if (slider.velocity > PULSE_VELOCITY_THRESHOLD && pulseCooldown <= 0) {
         const scaler = knobScalerRef.current
         if (scaler && typeof scaler.animate === 'function') {
-          // Web Animations API — fire-and-forget keyframe pulse.
-          // After it ends, CSS state takes over (scale-110 if still
-          // dragging, 1.0 if released — the CSS transition smooths it).
           scaler.animate(
             [
               { transform: 'scale(1.10)', filter: 'brightness(1)' },
@@ -237,132 +229,126 @@ export function FireballPage() {
       {/* Full-viewport Three.js canvas — fireball renders here */}
       <div ref={canvasContainerRef} className="absolute inset-0" aria-hidden />
 
-      {/* Centered HUD overlay (Figma node 1812:77) */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="flex w-[240px] flex-col items-center gap-[8px]">
-          {/* Top section: fire region + slider, gap-[32px] (1812:73) */}
-          <div className="flex w-full flex-col items-center gap-[32px]">
-            {/* Fire region spacer — preserves Figma vertical layout (~86px offset) */}
-            <div className="h-[160px] w-[128px]" aria-hidden />
+      {/*
+        Floating control panel — position: fixed at the bottom of the
+        viewport, horizontally centered via left-1/2 + -translate-x-1/2.
+        Sits above the canvas via z-10. The wrapper is pointer-events-none
+        so the canvas underneath receives cursor events for the fireball;
+        the slider track inside opts back in for drag handling.
 
+        bottom-8 = 32px from the viewport bottom (Tailwind 8 × 4px = 32px).
+        Slider + labels keep their exact Figma sizes, padding, gap, and radius.
+      */}
+      <div className="pointer-events-none fixed bottom-8 left-1/2 z-10 flex w-[240px] -translate-x-1/2 flex-col items-center gap-[8px]">
+        {/*
+          Slider track — 240 x 32, cool semi-light pill (1812:56).
+          `group` class on the track lets all descendants react to its
+          `data-dragging` attribute via Tailwind group-data variants.
+
+          overflow-hidden is INTENTIONALLY removed so the knob's fire glow
+          and the value badge above can render outside the track's bounds.
+          The track's visual shape (rounded, bg-white/15, hairline border)
+          is unchanged — only its clip behavior.
+        */}
+        <div
+          ref={trackRef}
+          role="slider"
+          aria-label="Fireball intensity"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={INITIAL_INTENSITY}
+          tabIndex={0}
+          data-dragging="false"
+          onPointerDown={handleSliderPointerDown}
+          onPointerMove={handleSliderPointerMove}
+          onPointerUp={handleSliderPointerUp}
+          onPointerCancel={handleSliderPointerUp}
+          className={`group pointer-events-auto relative h-[32px] w-full cursor-grab touch-none rounded-[999px] bg-white/15 active:cursor-grabbing ${TRACK_HAIRLINE}`}
+        >
+          {/*
+            Track radial highlight — follows the knob via the --glow-x
+            CSS variable (set every frame from the slider tick loop).
+            Fades in/out via the group-data variant.
+          */}
+          <div
+            ref={trackGlowRef}
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 transition-opacity duration-200 ease-out group-data-[dragging=true]:opacity-100"
+            style={{
+              background:
+                'radial-gradient(ellipse 72px 20px at var(--glow-x, 20px) center, rgba(255,170,90,0.42), transparent 72%)',
+            }}
+          />
+
+          {/*
+            Knob mover — only translateX is set on this element (every
+            frame, no transition). Splitting position from visual lets
+            the per-frame DOM mutation coexist with the CSS transition
+            on the inner scaler.
+          */}
+          <div
+            ref={knobMoverRef}
+            className="absolute left-0 top-0 h-[32px] w-[40px]"
+            style={{ willChange: 'transform' }}
+          >
             {/*
-              Slider track — 240 x 32, semi-transparent black pill (1812:56).
-              `group` class on the track lets all descendants react to its
-              `data-dragging` attribute via Tailwind group-data variants.
-
-              overflow-hidden is INTENTIONALLY removed so the knob's fire glow
-              and the value badge above can render outside the track's bounds.
-              The track's visual shape (rounded, bg-black/50, hairline border)
-              is unchanged — only its clip behavior.
+              Value badge — positioned above the knob, fades in with
+              slight upward motion when dragging starts.
             */}
             <div
-              ref={trackRef}
-              role="slider"
-              aria-label="Fireball intensity"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={INITIAL_INTENSITY}
-              tabIndex={0}
-              data-dragging="false"
-              onPointerDown={handleSliderPointerDown}
-              onPointerMove={handleSliderPointerMove}
-              onPointerUp={handleSliderPointerUp}
-              onPointerCancel={handleSliderPointerUp}
-              className={`group pointer-events-auto relative h-[32px] w-full cursor-grab touch-none rounded-[999px] bg-white/15 active:cursor-grabbing ${TRACK_HAIRLINE}`}
+              aria-hidden
+              className="pointer-events-none absolute -top-[28px] left-1/2 -translate-x-1/2 translate-y-2 opacity-0 transition-[opacity,transform] duration-200 ease-out group-data-[dragging=true]:translate-y-0 group-data-[dragging=true]:opacity-100"
             >
-              {/*
-                Track radial highlight — follows the knob via the --glow-x
-                CSS variable (set every frame from the slider tick loop).
-                Fades in/out via the group-data variant.
-              */}
               <div
-                ref={trackGlowRef}
-                aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 transition-opacity duration-200 ease-out group-data-[dragging=true]:opacity-100"
-                style={{
-                  background:
-                    'radial-gradient(ellipse 72px 20px at var(--glow-x, 20px) center, rgba(255,170,90,0.42), transparent 72%)',
-                }}
-              />
-
-              {/*
-                Knob mover — only translateX is set on this element (every
-                frame, no transition). Splitting position from visual lets
-                the per-frame DOM mutation coexist with the CSS transition
-                on the inner scaler.
-              */}
-              <div
-                ref={knobMoverRef}
-                className="absolute left-0 top-0 h-[32px] w-[40px]"
-                style={{ willChange: 'transform' }}
+                className={`min-w-[32px] rounded-md bg-[#1a2230]/95 px-[8px] py-[3px] text-center text-[11px] font-medium leading-none tabular-nums text-[#e3e8ef] ${BADGE_SHADOW}`}
               >
-                {/*
-                  Value badge — positioned above the knob, fades in with
-                  slight upward motion when dragging starts. translate-y-2
-                  (8px below resting position) → translate-y-0 + opacity 0
-                  → 1, both transitioned in 200ms.
-
-                  tabular-nums + min-w-[32px] keeps the badge stable in
-                  width as digits add (0 → 100), no jitter.
-                */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -top-[28px] left-1/2 -translate-x-1/2 translate-y-2 opacity-0 transition-[opacity,transform] duration-200 ease-out group-data-[dragging=true]:translate-y-0 group-data-[dragging=true]:opacity-100"
-                >
-                  <div
-                    className={`min-w-[32px] rounded-md bg-[#1a2230]/95 px-[8px] py-[3px] text-center text-[11px] font-medium leading-none tabular-nums text-[#e3e8ef] ${BADGE_SHADOW}`}
-                  >
-                    <span ref={badgeTextRef}>0</span>
-                  </div>
-                </div>
-
-                {/*
-                  Knob scaler — owns the visual (white pill, layered shadow)
-                  AND the cinematic transform/glow that animates on drag.
-                  220ms ease-out cubic-bezier transition on transform +
-                  box-shadow. The 5-stop base shadow has a placeholder fire
-                  glow at alpha 0 so the dragging variant can interpolate
-                  it to a real glow without a stop-count change (CSS
-                  box-shadow transitions only interpolate cleanly when
-                  the stop counts match).
-                */}
-                <div
-                  ref={knobScalerRef}
-                  className={`relative h-full w-full rounded-[999px] bg-[#e8ecf2] transition-[transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[dragging=true]:scale-110 ${KNOB_BASE_SHADOW} ${KNOB_DRAGGING_SHADOW}`}
-                  style={{ willChange: 'transform, box-shadow' }}
-                >
-                  {/* 3x3 grid of 4px gray dots (1812:67) */}
-                  <div className="absolute left-1/2 top-[6px] flex w-[20px] -translate-x-1/2 flex-col gap-[4px]">
-                    {[0, 1, 2].map((row) => (
-                      <div
-                        key={row}
-                        className="flex w-full items-center gap-[4px]"
-                      >
-                        {[0, 1, 2].map((col) => (
-                          <div
-                            key={col}
-                            className={`size-[4px] shrink-0 rounded-[999px] bg-[#c2c2c2] ${PILL_INNER_SHADOW}`}
-                          />
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Knob inset bevel + hairline border */}
-                  <div
-                    aria-hidden
-                    className={`pointer-events-none absolute inset-0 rounded-[inherit] ${PILL_INNER_SHADOW}`}
-                  />
-                </div>
+                <span ref={badgeTextRef}>0</span>
               </div>
             </div>
-          </div>
 
-          {/* Labels row — 208 wide, "0" / "100", Inter Medium 10 cool gray (1812:76) */}
-          <div className="flex w-[208px] items-center justify-between font-medium text-[10px] leading-none capitalize text-[#a8b1bf]">
-            <span>0</span>
-            <span>100</span>
+            {/*
+              Knob scaler — owns the visual (off-white pill, layered
+              shadow) AND the cinematic transform/glow that animates on
+              drag. 220ms ease-out cubic-bezier transition on transform +
+              box-shadow. The 5-stop base shadow has a placeholder fire
+              glow at alpha 0 so the dragging variant can interpolate it
+              to a real glow without a stop-count change.
+            */}
+            <div
+              ref={knobScalerRef}
+              className={`relative h-full w-full rounded-[999px] bg-[#e8ecf2] transition-[transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-data-[dragging=true]:scale-110 ${KNOB_BASE_SHADOW} ${KNOB_DRAGGING_SHADOW}`}
+              style={{ willChange: 'transform, box-shadow' }}
+            >
+              {/* 3x3 grid of 4px gray dots (1812:67) */}
+              <div className="absolute left-1/2 top-[6px] flex w-[20px] -translate-x-1/2 flex-col gap-[4px]">
+                {[0, 1, 2].map((row) => (
+                  <div
+                    key={row}
+                    className="flex w-full items-center gap-[4px]"
+                  >
+                    {[0, 1, 2].map((col) => (
+                      <div
+                        key={col}
+                        className={`size-[4px] shrink-0 rounded-[999px] bg-[#c2c2c2] ${PILL_INNER_SHADOW}`}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {/* Knob inset bevel + hairline border */}
+              <div
+                aria-hidden
+                className={`pointer-events-none absolute inset-0 rounded-[inherit] ${PILL_INNER_SHADOW}`}
+              />
+            </div>
           </div>
+        </div>
+
+        {/* Labels row — 208 wide, "0" / "100", Inter Medium 10 cool gray (1812:76) */}
+        <div className="flex w-[208px] items-center justify-between font-medium text-[10px] leading-none capitalize text-[#a8b1bf]">
+          <span>0</span>
+          <span>100</span>
         </div>
       </div>
     </main>
